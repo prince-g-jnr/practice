@@ -1,40 +1,127 @@
-import React, { useState } from "react";
-import {Link} from "react-router-dom";
+import { useState } from "react";
+import { NavLink} from "react-router-dom";
 
 function Login() {
-    const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
+    const [user_info, setUser_info] = useState({
+        email: "",
+        password: ""
+    });
+    const [errors, setErrors] = useState({});
+    const [success, setSuccess] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [apiError, setApiError] = useState("");
 
-    const handlelogin = (e) => {
+
+    function validate() {
+        const newErrors = {};
+
+        if (!user_info.email) {
+            newErrors.email = "Email is required";
+        } else if (!/\S+@\S+\.\S+/.test(user_info.email)) {
+            newErrors.email = 'Email is invalid';
+        }
+
+        if (!user_info.password) {
+            newErrors.password = 'Password is required';
+        } 
+        
+        return newErrors;
+    }
+
+    function handleChange(e) {
+        const { name, value } = e.target;
+        setUser_info({
+            ...user_info,
+            [name]: value
+        });
+
+        if (errors[name]) {
+            setErrors({ ...errors, [name]: "" });
+        }
+        setApiError("");
+    }
+
+    async function handleSubmit(e) {
         e.preventDefault();
-    };
+
+        const validationErrors = validate();
+
+        if (Object.keys(validationErrors).length > 0) {
+            setErrors(validationErrors);
+            return;
+        }
+
+        try {
+            setLoading(true);
+            setErrors({});
+            setSuccess("");
+
+            const response = await fetch("http://localhost:8000/login", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(user_info),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.detail || "Invalid email or password");
+            }
+
+            setSuccess("Login successful!");
+
+        } catch (error) {
+            setApiError(error.message);
+        } finally {
+            setLoading(false);
+        }
+        
+    }
 
     return (
-        <div className="form-container">
-            <h2>Login</h2>
-            <form onSubmit={handlelogin}>
-                <input
-                    type="email"
-                    placeholder="Enter your email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                />
+        <div className="cont">
 
-                <input
-                    type="password"
-                    placeholder="Enter your password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                />
+            <form onSubmit={handleSubmit} className="input_cont">
+                <h1>Login</h1>
 
-                <button type="submit">Login</button>
+                <div className="email_cont">
+                    <label>Email address</label>
+                    <input 
+                        type="email"
+                        name="email"
+                        value={user_info.email}
+                        onChange={handleChange}
+                        placeholder="Enter your email"
+                    />
+                    {errors.email && <p style={{ color: 'red', margin: 0, marginTop: 6, fontSize: 14, textAlign: 'left'}}>{errors.email}</p>}
+                </div>
 
-                <small>
-                    Don't have an account? <Link to="/signup">Sign up</Link>
-                </small>
+                <div className="password_cont">
+                    <label>Password</label>
+                    <input 
+                        type="password"
+                        name="password"
+                        value={user_info.password}
+                        onChange={handleChange}
+                        placeholder="Enter your password"
+                    />
+                    {errors.password && <p style={{ color: 'red', margin: 0, marginTop: 6, fontSize: 14, textAlign: 'left'}}>{errors.password}</p>}
+                </div>
+
+                <button className="sign-in" type="submit" disabled={loading}>
+                    <NavLink to="/dashboard" className="nav">
+                        {loading ? "Signing in..." : "Sign in"}
+                    </NavLink>
+                </button>
+
+                {apiError && <p style={{ color: 'green', margin: 0, marginTop: 6, fontSize: 14, textAlign: 'center'}}>{apiError}</p>}
+                {success && <p style={{ color: 'green', margin: 0, marginTop: 6, fontSize: 14, textAlign: 'center'}}>{success}</p>}
+
+                <p>Don't have an account? <span><NavLink to="/signup" className="navigate">Sign up</NavLink></span></p>
             </form>
+            
         </div>
     )
 }
